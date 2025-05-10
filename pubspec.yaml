@@ -1,7 +1,7 @@
 name: payu_in_web
-description: "Web implementation of PayU Payment Gateway."
-version: 1.0.0
-homepage: https://pub.dev/packages/payu_in_web
+description: "Web implementation of PayU Payment Gateway. Launch with all options enabled or directly into an enforced payment flow."
+version: 1.0.1
+homepage: https://github.com/uncoded-decimal/payu_in_web
 
 environment:
   sdk: ^3.6.0
