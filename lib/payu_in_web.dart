@@ -48,7 +48,15 @@ class FlutterPayuWeb {
     String ccexpmon = "",
     String ccexpyr = "",
     String enforcePaymentMethod = "",
+    List<PayUTPVBeneficiary>? beneficiaryDetails,
   }) {
+    // Assertions for TPV-NB
+    assert(
+      beneficiaryDetails != null
+          ? ((pg == "NB" || pg == "TESTNB") && bankcode.contains("TPV"))
+          : true,
+      "Please check the Payu TPV documentation at https://docs.payu.in/docs/net-banking-integration-for-tpv",
+    );
     // Assertions for NetBanking
     assert(
       (pg == "NB" || pg == "TESTNB")
@@ -80,11 +88,13 @@ class FlutterPayuWeb {
     );
     final amount = amountAsDouble.toStringAsFixed(2);
     final txnid = transactionId;
-    final hash = sha512.convert(
-      utf8.encode(
-        "$merchantKey|$txnid|$amount|$product|$firstName|$email|$udf1|$udf2|$udf3|$udf4|$udf5||||||$salt",
-      ),
-    );
+
+    // Doesn't include the beneficiary details block because at the
+    // time of testing and release the hash wasn't being calculated right
+    // with inclusion but, was found working without.
+    final hashingString =
+        "$merchantKey|$txnid|$amount|$product|$firstName|$email|$udf1|$udf2|$udf3|$udf4|$udf5||||||$salt";
+    final hash = sha512.convert(utf8.encode(hashingString));
 
     final checkoutUrl = isProd
         ? "https://secure.payu.in/_payment"
@@ -124,7 +134,16 @@ class FlutterPayuWeb {
       'udf9': udf9,
       'udf10': udf10,
       'hash': hash,
-      'enforce_paymethod': enforcePaymentMethod,
+      if (enforcePaymentMethod.isNotEmpty) ...{
+        'enforce_paymethod': enforcePaymentMethod,
+      },
+      if (beneficiaryDetails != null && beneficiaryDetails.isNotEmpty) ...{
+        "beneficiarydetail":
+            jsonEncode(_getBeneficiaryDetails(beneficiaryDetails))
+      },
+      if (vpa.isNotEmpty) ...{
+        "vpa": vpa,
+      },
     };
 
     fields.forEach(
@@ -141,4 +160,33 @@ class FlutterPayuWeb {
     form.submit();
     form.remove();
   }
+
+  static Map<String, String> _getBeneficiaryDetails(
+      List<PayUTPVBeneficiary> beneficiaryDetails) {
+    final accounts = List.empty(growable: true);
+    final ifsc = List.empty(growable: true);
+    for (var item in beneficiaryDetails) {
+      accounts.add(item.beneficiaryAccountNumber);
+      ifsc.add(item.ifscCode);
+    }
+    return {
+      "beneficiaryAccountNumber": accounts.join("|"),
+      "ifscCode": ifsc.join("|"),
+    };
+  }
+}
+
+class PayUTPVBeneficiary {
+  final String beneficiaryAccountNumber;
+  final String ifscCode;
+
+  PayUTPVBeneficiary({
+    required this.beneficiaryAccountNumber,
+    required this.ifscCode,
+  });
+
+  Map<String, String> get asMap => {
+        "beneficiaryAccountNumber": beneficiaryAccountNumber,
+        "ifscCode": ifscCode,
+      };
 }
