@@ -1,3 +1,8 @@
+## 1.1.0
+
+* added support for Netbanking TPV
+* bugfix:upi based intents
+
 ## 1.0.1
 
 * minor changes for pub.dart package release
